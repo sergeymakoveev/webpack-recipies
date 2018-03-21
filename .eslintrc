@@ -1,0 +1,20 @@
+{
+    "parser": "babel-eslint",
+    "extends":  ["eslint:recommended"],
+    "env": {
+        "node": true,
+        "es6": true
+    },
+    "rules": {
+        "strict": 1,
+        "quotes": [ 1, "single" ],
+        "eol-last": 1,
+        "new-cap": 0,
+        "no-console": 0,
+        "no-debugger": 1,
+        "no-extra-semi": 1,
+        "no-underscore-dangle": 0,
+        "no-unreachable": 2,
+        "no-use-before-define": 1
+    }
+}
