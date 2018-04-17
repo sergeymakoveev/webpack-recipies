@@ -30,9 +30,7 @@ const proxyfy_modify =
     (app) =>
     ({
         target, url,
-        reducer_status = ({ status /*, headers, body */ }) => status,
-        reducer_headers = ({ headers }) => headers,
-        reducer_body = ({ body }) => body,
+        reducer = ({ status, headers, body }) => ({ status, headers, body }),
         ...opts
     }) => {
         app.use(
@@ -53,21 +51,19 @@ const proxyfy_modify =
                     res.end = () => {
                         const isZipped = proxyRes.headers['content-encoding'] === 'gzip';
                         const body = (isZipped ? zlib.gunzipSync(buffer) : buffer).toString('utf8');
-                        const output_body = reducer_body({ status, headers, body });
-                        const output_status = reducer_status({ status, headers, body });
-                        const output_headers = reducer_headers({
-                            status, body,
+                        const reduced = reducer({ status, headers, body });
+                        const response = {
+                            ...reduced,
                             headers: {
-                                ...headers,
-                                'x-custom-header': 'x-custom-header-value',
-                                'content-length': Buffer.byteLength(output_body),
-                                'content-encoding': ''
+                                'content-length': Buffer.byteLength(reduced.body),
+                                'content-encoding': '',
+                                ...reduced.headers
                             }
-                        });
+                        };
                         // res.setHeader('content-length', Buffer.byteLength(output_body));
                         // res.setHeader('content-encoding', '');
-                        writeHead.call(res, output_status.code, output_status.phrase, output_headers);
-                        write.call(res, output_body);
+                        writeHead.call(res, response.status.code, response.status.phrase, response.headers);
+                        write.call(res, response.body);
                         end.call(res);
                     }
                 },
@@ -136,12 +132,17 @@ export default {
                 url: '/proxy/response-from-server-modify-helper',
                 target: 'http://localhost:3000/users/1',
                 pathRewrite: { '^/.+': '' },
-                reducer_body: ({ status, headers, body }) => {
-                    console.log({ status, headers, body });
-                    const json = { ...{ c: 3, d: 4 }, ...JSON.parse(body||'{}') };
-                    return JSON.stringify(json);
-                },
-                reducer_status: ({ status: { code, phrase } }) => ({ code:222, phrase })
+                reducer: ({ status: { code, phrase }, headers, body }) => {
+                    console.log({ status: { code, phrase }, headers, body });
+                    const s = { code: code + 22, phrase: `Say: ${phrase}` };
+                    const b = { ...{ c: 3, d: 4 }, ...JSON.parse(body || '{}') };
+                    const h = { ...headers, 'x-some-header': 'some value'};
+                    return {
+                        status: s,
+                        headers: h,
+                        body: JSON.stringify(b)
+                    };
+                }
             });
         },
         proxy: {
